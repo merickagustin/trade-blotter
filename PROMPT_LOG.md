@@ -73,4 +73,72 @@ components on the frontend wired to those routes via a Vite dev-server proxy. Ve
 live requests (create → amend → cancel) rather than just a type-check, since it changes
 runtime behaviour.
 
+---
+
+Prompt:
+"Could you scan the whole project? document its architecture to README.md. Clear it's
+existing document."
+
+Outcome:
+Replaced the default Vite template README with a description of the actual project instead
+of leaving the generic Vite boilerplate in place.
+
+---
+
+Prompt:
+"Create a database folder for MySQL connection" → refined to "database/ becomes its own
+local package" after review
+
+Outcome:
+Scaffolded `database/` as its own root-level npm package (`@trade-blotter/database`),
+linked into `backend/` via a `file:` dependency, instead of embedding the connection code
+inside `backend/`.
+
+---
+
+Prompt:
+"switch over to query MySQL"
+
+Outcome:
+Rewrote `TradeStore` to query MySQL instead of an in-memory `Map`. Found and fixed a real
+bug: the connection pool was created at import time, before `.env` loaded, so it silently
+ignored real credentials — fixed with a lazy `getPool()`.
+
+Prompt:
+"We want trades table to be like this [...]" (JSON spec: tradeId, symbol, side, quantity,
+price, trader, book, counterparty, tradeTimestamp, status)
+
+Outcome:
+Reshaped the domain model to match exactly — added `book`/`counterparty`, renamed
+`tradeDate` to `tradeTimestamp` (full ISO datetime) — across schema, backend, and frontend.
+
+---
+
+Prompt:
+"Clean cache. Remove the sampleTrade object. Switch to database for live data."
+
+Outcome:
+Removed the `sampleTrade` fixture and the startup seeding step; truncated the live tables.
+The app now starts empty, populated only by real data created through it.
+
+---
+
+Prompt:
+"Add websocket for Real Time updates. Setup for the configuration before updating the
+functionalities."
+
+Outcome:
+Added a WebSocket server on `/ws` with connection logging and a `broadcast()` helper —
+deliberately not called from the trade routes yet, per the "setup first" instruction.
+
+---
+
+Prompt:
+"Start updating to create/amend/cancel" → "change to emit to prevent double on live update"
+
+Outcome:
+Wired `broadcast()` into create/amend/cancel and added a frontend listener that upserts by
+`tradeId`. Then removed the frontend's optimistic local updates so the WebSocket message is
+the single source of truth, eliminating a double-update on the initiating client.
+
 

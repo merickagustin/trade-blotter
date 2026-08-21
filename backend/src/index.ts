@@ -1,7 +1,9 @@
+import { createServer } from 'node:http'
 import cors from 'cors'
 import express from 'express'
 import { initDb } from './db/init.js'
 import { tradesRouter } from './routes/trades.js'
+import { initWebSocketServer } from './ws/server.js'
 
 try {
   process.loadEnvFile('.env')
@@ -21,10 +23,14 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/trades', tradesRouter)
 
+const server = createServer(app)
+initWebSocketServer(server)
+
 initDb()
   .then(() => {
-    app.listen(port, () => {
+    server.listen(port, () => {
       console.log(`API listening on http://localhost:${port}`)
+      console.log(`WebSocket listening on ws://localhost:${port}/ws`)
     })
   })
   .catch((err: unknown) => {

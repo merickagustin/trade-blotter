@@ -21,23 +21,36 @@ function App() {
       .finally(() => setLoading(false))
   }, [])
 
+  useEffect(() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const socket = new WebSocket(`${protocol}//${window.location.host}/ws`)
+
+    socket.onmessage = (event) => {
+      const { trade } = JSON.parse(event.data) as { type: string; trade: Trade }
+      setTrades((prev) =>
+        prev.some((t) => t.tradeId === trade.tradeId)
+          ? prev.map((t) => (t.tradeId === trade.tradeId ? trade : t))
+          : [...prev, trade],
+      )
+    }
+
+    return () => socket.close()
+  }, [])
+
   async function handleCreate(data: NewTrade) {
-    const trade = await tradesApi.create(data)
-    setTrades((prev) => [...prev, trade])
+    await tradesApi.create(data)
     setModal(null)
   }
 
   async function handleAmend(tradeId: string, data: NewTrade) {
-    const trade = await tradesApi.amend(tradeId, data)
-    setTrades((prev) => prev.map((t) => (t.tradeId === tradeId ? trade : t)))
+    await tradesApi.amend(tradeId, data)
     setModal(null)
   }
 
   async function handleCancel(trade: Trade) {
     if (!confirm(`Cancel trade ${trade.symbol} (${trade.tradeId})?`)) return
     try {
-      const updated = await tradesApi.cancel(trade.tradeId)
-      setTrades((prev) => prev.map((t) => (t.tradeId === trade.tradeId ? updated : t)))
+      await tradesApi.cancel(trade.tradeId)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to cancel trade')
     }

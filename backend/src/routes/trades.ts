@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import type { NewTrade } from '../models/trade.js'
 import { TradeStore } from '../models/tradeStore.js'
+import { broadcast } from '../ws/server.js'
 
 export const tradesRouter = Router()
 
@@ -27,6 +28,7 @@ tradesRouter.post('/', async (req, res) => {
     return
   }
   const trade = await TradeStore.create(req.body as NewTrade)
+  broadcast({ type: 'created', trade })
   res.status(201).json(trade)
 })
 
@@ -49,6 +51,7 @@ tradesRouter.patch('/:tradeId', async (req, res) => {
   }
 
   const trade = await TradeStore.update(req.params.tradeId, req.body as Partial<NewTrade>)
+  broadcast({ type: 'amended', trade })
   res.json(trade)
 })
 
@@ -64,5 +67,6 @@ tradesRouter.post('/:tradeId/cancel', async (req, res) => {
   }
 
   const trade = await TradeStore.cancel(req.params.tradeId)
+  broadcast({ type: 'cancelled', trade })
   res.json(trade)
 })

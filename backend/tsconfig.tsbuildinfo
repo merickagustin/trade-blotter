@@ -1,0 +1,1 @@
+{"root":["./src/index.ts","./src/controllers/tradecontroller.ts","./src/db/init.ts","./src/db/seeddata.ts","./src/models/trade.ts","./src/repositories/traderepository.ts","./src/routes/trades.ts","./src/services/tradeservice.ts","./src/ws/server.ts"],"version":"6.0.3"}

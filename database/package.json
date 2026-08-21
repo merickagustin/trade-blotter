@@ -1,0 +1,19 @@
+{
+  "name": "@trade-blotter/database",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node -e \"require('fs').copyFileSync('src/schema.sql','dist/schema.sql')\"",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "mysql2": "^3.15.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "typescript": "~6.0.2"
+  }
+}

@@ -27,17 +27,17 @@ function App() {
     setModal(null)
   }
 
-  async function handleAmend(id: string, data: NewTrade) {
-    const trade = await tradesApi.amend(id, data)
-    setTrades((prev) => prev.map((t) => (t.id === id ? trade : t)))
+  async function handleAmend(tradeId: string, data: NewTrade) {
+    const trade = await tradesApi.amend(tradeId, data)
+    setTrades((prev) => prev.map((t) => (t.tradeId === tradeId ? trade : t)))
     setModal(null)
   }
 
   async function handleCancel(trade: Trade) {
-    if (!confirm(`Cancel trade ${trade.symbol} (${trade.id})?`)) return
+    if (!confirm(`Cancel trade ${trade.symbol} (${trade.tradeId})?`)) return
     try {
-      const updated = await tradesApi.cancel(trade.id)
-      setTrades((prev) => prev.map((t) => (t.id === trade.id ? updated : t)))
+      const updated = await tradesApi.cancel(trade.tradeId)
+      setTrades((prev) => prev.map((t) => (t.tradeId === trade.tradeId ? updated : t)))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to cancel trade')
     }
@@ -66,7 +66,7 @@ function App() {
           mode="amend"
           initialTrade={modal.trade}
           onClose={() => setModal(null)}
-          onSubmit={(data) => handleAmend(modal.trade.id, data)}
+          onSubmit={(data) => handleAmend(modal.trade.tradeId, data)}
         />
       )}
     </section>

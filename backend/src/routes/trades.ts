@@ -6,11 +6,13 @@ export const tradesRouter = Router()
 
 function validateNewTrade(body: Partial<NewTrade>): string | null {
   if (!body.symbol || typeof body.symbol !== 'string') return 'symbol is required'
+  if (body.side !== 'BUY' && body.side !== 'SELL') return 'side must be BUY or SELL'
   if (typeof body.quantity !== 'number' || body.quantity <= 0) return 'quantity must be a positive number'
   if (typeof body.price !== 'number' || body.price <= 0) return 'price must be a positive number'
-  if (body.side !== 'BUY' && body.side !== 'SELL') return 'side must be BUY or SELL'
   if (!body.trader || typeof body.trader !== 'string') return 'trader is required'
-  if (!body.tradeDate || typeof body.tradeDate !== 'string') return 'tradeDate is required'
+  if (!body.book || typeof body.book !== 'string') return 'book is required'
+  if (!body.counterparty || typeof body.counterparty !== 'string') return 'counterparty is required'
+  if (!body.tradeTimestamp || typeof body.tradeTimestamp !== 'string') return 'tradeTimestamp is required'
   return null
 }
 
@@ -28,8 +30,8 @@ tradesRouter.post('/', async (req, res) => {
   res.status(201).json(trade)
 })
 
-tradesRouter.patch('/:id', async (req, res) => {
-  const existing = await TradeStore.getById(req.params.id)
+tradesRouter.patch('/:tradeId', async (req, res) => {
+  const existing = await TradeStore.getById(req.params.tradeId)
   if (!existing) {
     res.status(404).json({ error: 'trade not found' })
     return
@@ -46,12 +48,12 @@ tradesRouter.patch('/:id', async (req, res) => {
     return
   }
 
-  const trade = await TradeStore.update(req.params.id, req.body as Partial<NewTrade>)
+  const trade = await TradeStore.update(req.params.tradeId, req.body as Partial<NewTrade>)
   res.json(trade)
 })
 
-tradesRouter.post('/:id/cancel', async (req, res) => {
-  const existing = await TradeStore.getById(req.params.id)
+tradesRouter.post('/:tradeId/cancel', async (req, res) => {
+  const existing = await TradeStore.getById(req.params.tradeId)
   if (!existing) {
     res.status(404).json({ error: 'trade not found' })
     return
@@ -61,6 +63,6 @@ tradesRouter.post('/:id/cancel', async (req, res) => {
     return
   }
 
-  const trade = await TradeStore.cancel(req.params.id)
+  const trade = await TradeStore.cancel(req.params.tradeId)
   res.json(trade)
 })

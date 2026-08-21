@@ -20,12 +20,15 @@ function TradeBlotter({ trades, onCreate, onAmend, onCancel }: TradeBlotterProps
       <table>
         <thead>
           <tr>
+            <th>Trade ID</th>
             <th>Symbol</th>
             <th>Side</th>
             <th>Quantity</th>
             <th>Price</th>
             <th>Trader</th>
-            <th>Trade Date</th>
+            <th>Book</th>
+            <th>Counterparty</th>
+            <th>Trade Timestamp</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
@@ -33,7 +36,7 @@ function TradeBlotter({ trades, onCreate, onAmend, onCancel }: TradeBlotterProps
         <tbody>
           {trades.length === 0 && (
             <tr>
-              <td colSpan={8} className="empty-row">
+              <td colSpan={11} className="empty-row">
                 No trades yet.
               </td>
             </tr>
@@ -41,13 +44,16 @@ function TradeBlotter({ trades, onCreate, onAmend, onCancel }: TradeBlotterProps
           {trades.map((trade) => {
             const isActive = trade.status === 'ACTIVE'
             return (
-              <tr key={trade.id} className={!isActive ? 'cancelled' : undefined}>
+              <tr key={trade.tradeId} className={!isActive ? 'cancelled' : undefined}>
+                <td>{trade.tradeId}</td>
                 <td>{trade.symbol}</td>
                 <td>{trade.side}</td>
                 <td>{trade.quantity}</td>
                 <td>{trade.price.toFixed(2)}</td>
                 <td>{trade.trader}</td>
-                <td>{trade.tradeDate.slice(0, 10)}</td>
+                <td>{trade.book}</td>
+                <td>{trade.counterparty}</td>
+                <td>{trade.tradeTimestamp.replace('T', ' ').replace('Z', '')}</td>
                 <td>{trade.status}</td>
                 <td className="actions">
                   <button type="button" onClick={() => onAmend(trade)} disabled={!isActive}>

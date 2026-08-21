@@ -9,13 +9,19 @@ interface TradeFormModalProps {
   onSubmit: (data: NewTrade) => Promise<void>
 }
 
+function toDatetimeLocal(iso: string): string {
+  return new Date(iso).toISOString().slice(0, 16)
+}
+
 const emptyForm: NewTrade = {
   symbol: '',
+  side: 'BUY',
   quantity: 0,
   price: 0,
-  side: 'BUY',
   trader: '',
-  tradeDate: new Date().toISOString().slice(0, 10),
+  book: '',
+  counterparty: '',
+  tradeTimestamp: toDatetimeLocal(new Date().toISOString()),
 }
 
 function TradeFormModal({ mode, initialTrade, onClose, onSubmit }: TradeFormModalProps) {
@@ -23,11 +29,13 @@ function TradeFormModal({ mode, initialTrade, onClose, onSubmit }: TradeFormModa
     initialTrade
       ? {
           symbol: initialTrade.symbol,
+          side: initialTrade.side,
           quantity: initialTrade.quantity,
           price: initialTrade.price,
-          side: initialTrade.side,
           trader: initialTrade.trader,
-          tradeDate: initialTrade.tradeDate,
+          book: initialTrade.book,
+          counterparty: initialTrade.counterparty,
+          tradeTimestamp: toDatetimeLocal(initialTrade.tradeTimestamp),
         }
       : emptyForm,
   )
@@ -39,7 +47,7 @@ function TradeFormModal({ mode, initialTrade, onClose, onSubmit }: TradeFormModa
     setError(null)
     setSubmitting(true)
     try {
-      await onSubmit(form)
+      await onSubmit({ ...form, tradeTimestamp: new Date(form.tradeTimestamp).toISOString() })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
@@ -100,12 +108,28 @@ function TradeFormModal({ mode, initialTrade, onClose, onSubmit }: TradeFormModa
             />
           </label>
           <label>
-            Trade Date
+            Book
             <input
               required
-              type="date"
-              value={form.tradeDate.slice(0, 10)}
-              onChange={(e) => setForm({ ...form, tradeDate: e.target.value })}
+              value={form.book}
+              onChange={(e) => setForm({ ...form, book: e.target.value })}
+            />
+          </label>
+          <label>
+            Counterparty
+            <input
+              required
+              value={form.counterparty}
+              onChange={(e) => setForm({ ...form, counterparty: e.target.value })}
+            />
+          </label>
+          <label>
+            Trade Timestamp
+            <input
+              required
+              type="datetime-local"
+              value={form.tradeTimestamp}
+              onChange={(e) => setForm({ ...form, tradeTimestamp: e.target.value })}
             />
           </label>
 

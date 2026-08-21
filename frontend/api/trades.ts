@@ -18,8 +18,8 @@ export const tradesApi = {
   create: (input: NewTrade) =>
     request<Trade>('', { method: 'POST', body: JSON.stringify(input) }),
 
-  amend: (id: string, patch: Partial<NewTrade>) =>
-    request<Trade>(`/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  amend: (tradeId: string, patch: Partial<NewTrade>) =>
+    request<Trade>(`/${tradeId}`, { method: 'PATCH', body: JSON.stringify(patch) }),
 
-  cancel: (id: string) => request<Trade>(`/${id}/cancel`, { method: 'POST' }),
+  cancel: (tradeId: string) => request<Trade>(`/${tradeId}/cancel`, { method: 'POST' }),
 }

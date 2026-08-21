@@ -1,12 +1,14 @@
 export interface Trade {
-  id: string
+  tradeId: string
   symbol: string
+  side: 'BUY' | 'SELL'
   quantity: number
   price: number
-  side: 'BUY' | 'SELL'
   trader: string
-  tradeDate: string
+  book: string
+  counterparty: string
+  tradeTimestamp: string
   status: 'ACTIVE' | 'CANCELLED'
 }
 
-export type NewTrade = Omit<Trade, 'id' | 'status'>
+export type NewTrade = Omit<Trade, 'tradeId' | 'status'>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { TradeService, validateNewTrade } from '../../src/services/tradeService.js'
 import type { ITradeRepository } from '../../src/repositories/tradeRepository.js'
-import type { NewTrade, Trade } from '../../src/models/trade.js'
+import type { NewTrade, Trade, TradeAmendment } from '../../src/models/trade.js'
 
 const validTrade = {
   symbol: 'AAPL',
@@ -52,6 +52,7 @@ describe('validateNewTrade', () => {
 // without a real MySQL connection.
 class FakeTradeRepository implements ITradeRepository {
   private trades = new Map<string, Trade>()
+  private amendments: TradeAmendment[] = []
 
   async getAll(): Promise<Trade[]> {
     return [...this.trades.values()]
@@ -72,6 +73,13 @@ class FakeTradeRepository implements ITradeRepository {
     if (!existing) return undefined
     const updated = { ...existing, ...patch }
     this.trades.set(tradeId, updated)
+    this.amendments.unshift({
+      id: this.amendments.length + 1,
+      tradeId,
+      amendedAt: new Date().toISOString(),
+      before: existing,
+      after: updated,
+    })
     return updated
   }
 
@@ -81,6 +89,10 @@ class FakeTradeRepository implements ITradeRepository {
     const cancelled: Trade = { ...existing, status: 'CANCELLED' }
     this.trades.set(tradeId, cancelled)
     return cancelled
+  }
+
+  async getAmendments(tradeId: string): Promise<TradeAmendment[]> {
+    return this.amendments.filter((amendment) => amendment.tradeId === tradeId)
   }
 }
 
@@ -96,5 +108,32 @@ describe('TradeService (with a fake repository)', () => {
     const result = await service.amendTrade(created.tradeId, { quantity: 999 })
 
     expect(result).toEqual({ error: 'cannot amend a cancelled trade', code: 409 })
+  })
+
+  it('returns 404 for history of an unknown trade', async () => {
+    const service = new TradeService(new FakeTradeRepository())
+
+    const result = await service.getTradeHistory('TRD-NOPE')
+
+    expect(result).toEqual({ error: 'trade not found', code: 404 })
+  })
+
+  it('records a before/after snapshot for each amendment, most recent first', async () => {
+    const service = new TradeService(new FakeTradeRepository())
+
+    const created = await service.createTrade(validTrade)
+    if ('error' in created) throw new Error('setup failed: create should not fail')
+
+    await service.amendTrade(created.tradeId, { quantity: 200 })
+    await service.amendTrade(created.tradeId, { quantity: 300 })
+
+    const history = await service.getTradeHistory(created.tradeId)
+    if ('error' in history) throw new Error('history lookup should not fail')
+
+    expect(history).toHaveLength(2)
+    expect(history[0].before.quantity).toBe(200)
+    expect(history[0].after.quantity).toBe(300)
+    expect(history[1].before.quantity).toBe(100)
+    expect(history[1].after.quantity).toBe(200)
   })
 })

@@ -36,3 +36,13 @@ export async function cancel(req: Request<{ tradeId: string }>, res: Response): 
   }
   res.json(result)
 }
+
+// GET /api/trades/:tradeId/history — amendment history for a trade, most recent first.
+export async function history(req: Request<{ tradeId: string }>, res: Response): Promise<void> {
+  const result = await tradeService.getTradeHistory(req.params.tradeId)
+  if ('error' in result) {
+    res.status(result.code).json({ error: result.error })
+    return
+  }
+  res.json(result)
+}

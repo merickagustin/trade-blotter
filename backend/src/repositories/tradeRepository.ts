@@ -1,6 +1,6 @@
 import { getPool } from '@trade-blotter/database'
 import type { ResultSetHeader } from '@trade-blotter/database'
-import type { NewTrade, Trade, TradeRow } from '../models/trade.js'
+import type { NewTrade, Trade, TradeAmendment, TradeAmendmentRow, TradeRow } from '../models/trade.js'
 
 export function toMysqlDatetime(iso: string): string {
   return new Date(iso).toISOString().slice(0, 19).replace('T', ' ')
@@ -31,6 +31,7 @@ export interface ITradeRepository {
   create(input: NewTrade): Promise<Trade>
   update(tradeId: string, patch: Partial<NewTrade>): Promise<Trade | undefined>
   cancel(tradeId: string): Promise<Trade | undefined>
+  getAmendments(tradeId: string): Promise<TradeAmendment[]>
 }
 
 // Repository for the `trades` table — the only place in the backend that talks SQL. The
@@ -90,6 +91,12 @@ export class TradeRepository implements ITradeRepository {
         tradeId,
       ],
     )
+
+    await getPool().query(
+      'INSERT INTO trade_amendments (tradeId, amended_at, before_state, after_state) VALUES (?, ?, ?, ?)',
+      [tradeId, toMysqlDatetime(new Date().toISOString()), JSON.stringify(existing), JSON.stringify(updated)],
+    )
+
     return updated
   }
 
@@ -99,5 +106,21 @@ export class TradeRepository implements ITradeRepository {
 
     await getPool().query('UPDATE trades SET status = ? WHERE tradeId = ?', ['CANCELLED', tradeId])
     return { ...existing, status: 'CANCELLED' }
+  }
+
+  // Amendment history for a trade, most recent first. Empty array if the trade has never been
+  // amended (never throws for an unknown tradeId — that's the caller's job to check via getById).
+  async getAmendments(tradeId: string): Promise<TradeAmendment[]> {
+    const [rows] = await getPool().query<TradeAmendmentRow[]>(
+      'SELECT * FROM trade_amendments WHERE tradeId = ? ORDER BY id DESC',
+      [tradeId],
+    )
+    return rows.map((row) => ({
+      id: row.id,
+      tradeId: row.tradeId,
+      amendedAt: toIsoTimestamp(row.amended_at),
+      before: row.before_state,
+      after: row.after_state,
+    }))
   }
 }

@@ -33,3 +33,21 @@ export interface TradeRow extends RowDataPacket {
   trade_timestamp: string
   status: 'ACTIVE' | 'CANCELLED'
 }
+
+// One row per successful amendment (PATCH /api/trades/:tradeId) — full before/after snapshots
+// of the trade, not a field-level diff. Does not cover cancellations.
+export interface TradeAmendment {
+  id: number
+  tradeId: string
+  amendedAt: string
+  before: Trade
+  after: Trade
+}
+
+export interface TradeAmendmentRow extends RowDataPacket {
+  id: number
+  tradeId: string
+  amended_at: string
+  before_state: Trade
+  after_state: Trade
+}

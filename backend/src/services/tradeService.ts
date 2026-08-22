@@ -1,7 +1,7 @@
 import { TradeRepository } from '../repositories/tradeRepository.js'
 import { broadcast } from '../ws/server.js'
 import type { ITradeRepository } from '../repositories/tradeRepository.js'
-import type { NewTrade, Trade } from '../models/trade.js'
+import type { NewTrade, Trade, TradeAmendment } from '../models/trade.js'
 
 // Result shape for operations that can fail for a business reason (not found, invalid input,
 // already cancelled). Controllers check `'error' in result` and map `code` straight to the
@@ -72,6 +72,14 @@ export class TradeService {
 
     broadcast({ type: 'cancelled', trade })
     return trade
+  }
+
+  // Amendment history for a trade (before/after snapshots), most recent first.
+  async getTradeHistory(tradeId: string): Promise<TradeAmendment[] | ServiceError> {
+    const existing = await this.repository.getById(tradeId)
+    if (!existing) return { error: 'trade not found', code: 404 }
+
+    return this.repository.getAmendments(tradeId)
   }
 }
 

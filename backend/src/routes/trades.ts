@@ -5,7 +5,7 @@ import { broadcast } from '../ws/server.js'
 
 export const tradesRouter = Router()
 
-function validateNewTrade(body: Partial<NewTrade>): string | null {
+export function validateNewTrade(body: Partial<NewTrade>): string | null {
   if (!body.symbol || typeof body.symbol !== 'string') return 'symbol is required'
   if (body.side !== 'BUY' && body.side !== 'SELL') return 'side must be BUY or SELL'
   if (typeof body.quantity !== 'number' || body.quantity <= 0) return 'quantity must be a positive number'

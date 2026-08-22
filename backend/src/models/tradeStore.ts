@@ -19,7 +19,7 @@ export function toMysqlDatetime(iso: string): string {
   return new Date(iso).toISOString().slice(0, 19).replace('T', ' ')
 }
 
-function toIsoTimestamp(mysqlDatetime: string): string {
+export function toIsoTimestamp(mysqlDatetime: string): string {
   return `${mysqlDatetime.replace(' ', 'T')}Z`
 }
 

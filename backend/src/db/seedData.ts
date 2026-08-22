@@ -59,6 +59,9 @@ function randomTimestamp(daysBack: number): string {
     Math.floor(Math.random() * 60),
     Math.floor(Math.random() * 60),
   )
+  // Setting a trading-hour time on "today" can land later than the current moment — push
+  // back a day so seeded trades never appear to happen in the future.
+  if (date.getTime() > Date.now()) date.setUTCDate(date.getUTCDate() - 1)
   return date.toISOString().replace(/\.\d{3}Z$/, 'Z')
 }
 

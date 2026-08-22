@@ -1,6 +1,6 @@
 import { getPool, ensureDatabase, initSchema } from '@trade-blotter/database'
 import type { RowDataPacket } from '@trade-blotter/database'
-import { TradeStore } from '../models/tradeStore.js'
+import { TradeRepository } from '../repositories/tradeRepository.js'
 import { generateSeedTrades } from './seedData.js'
 
 interface CountRow extends RowDataPacket {
@@ -41,17 +41,19 @@ export async function initDb(): Promise<void> {
 }
 
 // One-time seed of realistic randomized trades so the blotter isn't empty on a fresh database.
-// Goes through TradeStore.create/cancel (the same path real trades take) rather than a separate
-// bulk-insert, so seeded rows get real sequential tradeIds and behave exactly like user-created
-// ones. Only runs when the table is genuinely empty, so restarts never duplicate it.
+// Goes through TradeRepository.create/cancel directly (bypassing the service layer's validation
+// and broadcast — seeding is infrastructure, not a user-facing action), so seeded rows still
+// get real sequential tradeIds. Only runs when the table is genuinely empty, so restarts never
+// duplicate it.
 async function seedIfEmpty(): Promise<void> {
   const [rows] = await getPool().query<CountRow[]>('SELECT COUNT(*) AS count FROM trades')
   if (rows[0].count > 0) return
 
-  const trades = await Promise.all(generateSeedTrades(SEED_COUNT).map((trade) => TradeStore.create(trade)))
+  const repository = new TradeRepository()
+  const trades = await Promise.all(generateSeedTrades(SEED_COUNT).map((trade) => repository.create(trade)))
 
   const toCancel = trades.filter(() => Math.random() < CANCELLED_RATIO)
-  await Promise.all(toCancel.map((trade) => TradeStore.cancel(trade.tradeId)))
+  await Promise.all(toCancel.map((trade) => repository.cancel(trade.tradeId)))
 
   console.log(`Seeded ${trades.length} trades (${toCancel.length} cancelled).`)
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toIsoTimestamp, toMysqlDatetime } from './tradeStore.js'
+import { toIsoTimestamp, toMysqlDatetime } from '../../src/repositories/tradeRepository.js'
 
 describe('toMysqlDatetime', () => {
   it('converts an ISO timestamp to MySQL DATETIME format', () => {

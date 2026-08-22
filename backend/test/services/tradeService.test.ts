@@ -1,0 +1,100 @@
+import { describe, expect, it } from 'vitest'
+import { TradeService, validateNewTrade } from '../../src/services/tradeService.js'
+import type { ITradeRepository } from '../../src/repositories/tradeRepository.js'
+import type { NewTrade, Trade } from '../../src/models/trade.js'
+
+const validTrade = {
+  symbol: 'AAPL',
+  side: 'BUY' as const,
+  quantity: 100,
+  price: 150.5,
+  trader: 'JSMITH',
+  book: 'EQUITIES_US',
+  counterparty: 'Goldman Sachs',
+  tradeTimestamp: '2026-08-18T09:15:23Z',
+}
+
+describe('validateNewTrade', () => {
+  it('accepts a fully valid trade', () => {
+    expect(validateNewTrade(validTrade)).toBeNull()
+  })
+
+  it('rejects a missing symbol', () => {
+    expect(validateNewTrade({ ...validTrade, symbol: '' })).toBe('symbol is required')
+  })
+
+  it('rejects a side that is not BUY or SELL', () => {
+    // @ts-expect-error deliberately invalid input
+    expect(validateNewTrade({ ...validTrade, side: 'HOLD' })).toBe('side must be BUY or SELL')
+  })
+
+  it('rejects a non-positive quantity', () => {
+    expect(validateNewTrade({ ...validTrade, quantity: 0 })).toBe('quantity must be a positive number')
+    expect(validateNewTrade({ ...validTrade, quantity: -5 })).toBe('quantity must be a positive number')
+  })
+
+  it('rejects a non-positive price', () => {
+    expect(validateNewTrade({ ...validTrade, price: 0 })).toBe('price must be a positive number')
+  })
+
+  it('rejects a missing trader, book, or counterparty', () => {
+    expect(validateNewTrade({ ...validTrade, trader: '' })).toBe('trader is required')
+    expect(validateNewTrade({ ...validTrade, book: '' })).toBe('book is required')
+    expect(validateNewTrade({ ...validTrade, counterparty: '' })).toBe('counterparty is required')
+  })
+
+  it('rejects a missing tradeTimestamp', () => {
+    expect(validateNewTrade({ ...validTrade, tradeTimestamp: '' })).toBe('tradeTimestamp is required')
+  })
+})
+
+// Hand-written in-memory fake — proves the DI point: business logic (guards) can be tested
+// without a real MySQL connection.
+class FakeTradeRepository implements ITradeRepository {
+  private trades = new Map<string, Trade>()
+
+  async getAll(): Promise<Trade[]> {
+    return [...this.trades.values()]
+  }
+
+  async getById(tradeId: string): Promise<Trade | undefined> {
+    return this.trades.get(tradeId)
+  }
+
+  async create(input: NewTrade): Promise<Trade> {
+    const trade: Trade = { ...input, tradeId: `TRD-FAKE-${this.trades.size + 1}`, status: 'ACTIVE' }
+    this.trades.set(trade.tradeId, trade)
+    return trade
+  }
+
+  async update(tradeId: string, patch: Partial<NewTrade>): Promise<Trade | undefined> {
+    const existing = this.trades.get(tradeId)
+    if (!existing) return undefined
+    const updated = { ...existing, ...patch }
+    this.trades.set(tradeId, updated)
+    return updated
+  }
+
+  async cancel(tradeId: string): Promise<Trade | undefined> {
+    const existing = this.trades.get(tradeId)
+    if (!existing) return undefined
+    const cancelled: Trade = { ...existing, status: 'CANCELLED' }
+    this.trades.set(tradeId, cancelled)
+    return cancelled
+  }
+}
+
+describe('TradeService (with a fake repository)', () => {
+  it('refuses to amend a cancelled trade', async () => {
+    const service = new TradeService(new FakeTradeRepository())
+
+    const created = await service.createTrade(validTrade)
+    if ('error' in created) throw new Error('setup failed: create should not fail')
+
+    await service.cancelTrade(created.tradeId)
+
+    const result = await service.amendTrade(created.tradeId, { quantity: 999 })
+
+    expect(result).toEqual({ error: 'cannot amend a cancelled trade', code: 409 })
+  })
+})

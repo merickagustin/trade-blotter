@@ -23,7 +23,9 @@ function PositionSummary({ positions }: PositionSummaryProps) {
             {positions.map((position) => (
               <tr key={position.symbol}>
                 <td>{position.symbol}</td>
-                <td>{position.netQuantity}</td>
+                <td className={position.netQuantity < 0 ? 'pnl-negative' : undefined}>
+                  {position.netQuantity}
+                </td>
               </tr>
             ))}
           </tbody>

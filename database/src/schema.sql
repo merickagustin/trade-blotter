@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS trades (
 -- Audit trail of trade amendments (PATCH /api/trades/:tradeId only — cancellations aren't
 -- recorded here). Full before/after snapshots as JSON rather than duplicated before_*/after_*
 -- columns, so this table doesn't need a migration every time Trade's shape changes.
-CREATE TABLE IF NOT EXISTS trade_amendments (
+CREATE TABLE IF NOT EXISTS audit_trade_amendments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   tradeId VARCHAR(12) NOT NULL,
   amended_at DATETIME NOT NULL,

@@ -33,7 +33,7 @@ custom error classes, no centralized error middleware — deliberately kept simp
 class + interface in `repositories/`, a service class in `services/`, handler functions in
 `controllers/`, and declarative route wiring in `routes/`.
 
-**Audit trail:** `PATCH /api/trades/:tradeId` amendments are recorded in `trade_amendments`
+**Audit trail:** `PATCH /api/trades/:tradeId` amendments are recorded in `audit_trade_amendments`
 (full before/after JSON snapshots, not a field-level diff) and readable via
 `GET /api/trades/:tradeId/history`. Cancellations aren't recorded here — amendments only. No
 actor/"amended by" field — there's no real authenticated user to attribute it to yet.

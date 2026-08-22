@@ -93,7 +93,7 @@ export class TradeRepository implements ITradeRepository {
     )
 
     await getPool().query(
-      'INSERT INTO trade_amendments (tradeId, amended_at, before_state, after_state) VALUES (?, ?, ?, ?)',
+      'INSERT INTO audit_trade_amendments (tradeId, amended_at, before_state, after_state) VALUES (?, ?, ?, ?)',
       [tradeId, toMysqlDatetime(new Date().toISOString()), JSON.stringify(existing), JSON.stringify(updated)],
     )
 
@@ -112,7 +112,7 @@ export class TradeRepository implements ITradeRepository {
   // amended (never throws for an unknown tradeId — that's the caller's job to check via getById).
   async getAmendments(tradeId: string): Promise<TradeAmendment[]> {
     const [rows] = await getPool().query<TradeAmendmentRow[]>(
-      'SELECT * FROM trade_amendments WHERE tradeId = ? ORDER BY id DESC',
+      'SELECT * FROM audit_trade_amendments WHERE tradeId = ? ORDER BY id DESC',
       [tradeId],
     )
     return rows.map((row) => ({

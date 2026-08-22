@@ -38,6 +38,12 @@ class + interface in `repositories/`, a service class in `services/`, handler fu
 `GET /api/trades/:tradeId/history`. Cancellations aren't recorded here — amendments only. No
 actor/"amended by" field — there's no real authenticated user to attribute it to yet.
 
+**Position Summary:** `GET /api/trades/positions` returns net quantity per symbol
+(SUM of BUY minus SUM of SELL, `ACTIVE` trades only) via SQL aggregation — computed on the
+backend, not derived from whatever the frontend happens to have loaded, so it's correct
+regardless of trade volume. Surfaced in the UI as `PositionSummary.tsx`, refetched on every
+WebSocket trade event since it can't be derived from the event payload alone.
+
 ## Tests
 
 Tests live in `backend/test/`, mirroring `src/`'s structure — **not** co-located with source

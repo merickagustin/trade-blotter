@@ -1,4 +1,4 @@
-import type { NewTrade, Trade } from '../types/trade'
+import type { NewTrade, PositionSummary, Trade } from '../types/trade'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api/trades${path}`, {
@@ -22,4 +22,6 @@ export const tradesApi = {
     request<Trade>(`/${tradeId}`, { method: 'PATCH', body: JSON.stringify(patch) }),
 
   cancel: (tradeId: string) => request<Trade>(`/${tradeId}/cancel`, { method: 'POST' }),
+
+  positions: () => request<PositionSummary[]>('/positions'),
 }

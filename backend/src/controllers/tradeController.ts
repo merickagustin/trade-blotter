@@ -46,3 +46,8 @@ export async function history(req: Request<{ tradeId: string }>, res: Response):
   }
   res.json(result)
 }
+
+// GET /api/trades/positions — net position per symbol (ACTIVE trades only).
+export async function positions(_req: Request, res: Response): Promise<void> {
+  res.json(await tradeService.getPositions())
+}

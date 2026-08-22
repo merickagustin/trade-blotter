@@ -1,6 +1,14 @@
 import { getPool } from '@trade-blotter/database'
 import type { ResultSetHeader } from '@trade-blotter/database'
-import type { NewTrade, Trade, TradeAmendment, TradeAmendmentRow, TradeRow } from '../models/trade.js'
+import type {
+  NewTrade,
+  PositionRow,
+  PositionSummary,
+  Trade,
+  TradeAmendment,
+  TradeAmendmentRow,
+  TradeRow,
+} from '../models/trade.js'
 
 export function toMysqlDatetime(iso: string): string {
   return new Date(iso).toISOString().slice(0, 19).replace('T', ' ')
@@ -32,6 +40,7 @@ export interface ITradeRepository {
   update(tradeId: string, patch: Partial<NewTrade>): Promise<Trade | undefined>
   cancel(tradeId: string): Promise<Trade | undefined>
   getAmendments(tradeId: string): Promise<TradeAmendment[]>
+  getPositions(): Promise<PositionSummary[]>
 }
 
 // Repository for the `trades` table — the only place in the backend that talks SQL. The
@@ -122,5 +131,15 @@ export class TradeRepository implements ITradeRepository {
       before: row.before_state,
       after: row.after_state,
     }))
+  }
+
+  // Net position per symbol (BUY quantity minus SELL quantity) across ACTIVE trades only.
+  // Symbols that net to zero are still included — no special-casing.
+  async getPositions(): Promise<PositionSummary[]> {
+    const [rows] = await getPool().query<PositionRow[]>(
+      `SELECT symbol, SUM(CASE WHEN side = 'BUY' THEN quantity ELSE -quantity END) AS netQuantity
+       FROM trades WHERE status = 'ACTIVE' GROUP BY symbol ORDER BY symbol`,
+    )
+    return rows.map((row) => ({ symbol: row.symbol, netQuantity: Number(row.netQuantity) }))
   }
 }

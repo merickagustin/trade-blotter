@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { TradeService, validateNewTrade } from '../../src/services/tradeService.js'
 import type { ITradeRepository } from '../../src/repositories/tradeRepository.js'
-import type { NewTrade, Trade, TradeAmendment } from '../../src/models/trade.js'
+import type { NewTrade, PositionSummary, Trade, TradeAmendment } from '../../src/models/trade.js'
 
 const validTrade = {
   symbol: 'AAPL',
@@ -94,6 +94,18 @@ class FakeTradeRepository implements ITradeRepository {
   async getAmendments(tradeId: string): Promise<TradeAmendment[]> {
     return this.amendments.filter((amendment) => amendment.tradeId === tradeId)
   }
+
+  async getPositions(): Promise<PositionSummary[]> {
+    const netBySymbol = new Map<string, number>()
+    for (const trade of this.trades.values()) {
+      if (trade.status !== 'ACTIVE') continue
+      const signedQuantity = trade.side === 'BUY' ? trade.quantity : -trade.quantity
+      netBySymbol.set(trade.symbol, (netBySymbol.get(trade.symbol) ?? 0) + signedQuantity)
+    }
+    return [...netBySymbol.entries()]
+      .map(([symbol, netQuantity]) => ({ symbol, netQuantity }))
+      .sort((a, b) => a.symbol.localeCompare(b.symbol))
+  }
 }
 
 describe('TradeService (with a fake repository)', () => {
@@ -135,5 +147,21 @@ describe('TradeService (with a fake repository)', () => {
     expect(history[0].after.quantity).toBe(300)
     expect(history[1].before.quantity).toBe(100)
     expect(history[1].after.quantity).toBe(200)
+  })
+
+  it('nets BUY/SELL quantity per symbol and excludes cancelled trades', async () => {
+    const service = new TradeService(new FakeTradeRepository())
+
+    const buy = await service.createTrade({ ...validTrade, symbol: 'AAPL', side: 'BUY', quantity: 100 })
+    if ('error' in buy) throw new Error('setup failed: create should not fail')
+    await service.createTrade({ ...validTrade, symbol: 'AAPL', side: 'SELL', quantity: 40 })
+
+    const cancelled = await service.createTrade({ ...validTrade, symbol: 'MSFT', side: 'BUY', quantity: 500 })
+    if ('error' in cancelled) throw new Error('setup failed: create should not fail')
+    await service.cancelTrade(cancelled.tradeId)
+
+    const positions = await service.getPositions()
+
+    expect(positions).toEqual([{ symbol: 'AAPL', netQuantity: 60 }])
   })
 })

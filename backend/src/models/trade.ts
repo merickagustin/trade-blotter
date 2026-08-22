@@ -51,3 +51,15 @@ export interface TradeAmendmentRow extends RowDataPacket {
   before_state: Trade
   after_state: Trade
 }
+
+// Net position per symbol, across ACTIVE trades only (BUY quantity minus SELL quantity).
+// Cancelled trades never contribute. Computed on demand via SQL aggregation — not stored.
+export interface PositionSummary {
+  symbol: string
+  netQuantity: number
+}
+
+export interface PositionRow extends RowDataPacket {
+  symbol: string
+  netQuantity: string
+}

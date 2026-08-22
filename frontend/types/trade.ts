@@ -26,3 +26,13 @@ export interface TradeFormModalProps {
   onClose: () => void
   onSubmit: (data: NewTrade) => Promise<void>
 }
+
+// Net position per symbol, across ACTIVE trades only. Mirrors backend/src/models/trade.ts.
+export interface PositionSummary {
+  symbol: string
+  netQuantity: number
+}
+
+export interface PositionSummaryProps {
+  positions: PositionSummary[]
+}

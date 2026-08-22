@@ -7,6 +7,7 @@ import * as tradeController from '../controllers/tradeController.js'
 export const tradesRouter = Router()
 
 tradesRouter.get('/', tradeController.list)
+tradesRouter.get('/positions', tradeController.positions)
 tradesRouter.post('/', tradeController.create)
 tradesRouter.patch('/:tradeId', tradeController.amend)
 tradesRouter.get('/:tradeId/history', tradeController.history)

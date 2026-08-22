@@ -7,6 +7,7 @@ import type { NewTrade, PositionSummary as PositionSummaryData, Trade } from './
 import './App.css'
 
 type ModalState = { mode: 'create' } | { mode: 'amend'; trade: Trade } | null
+type Tab = 'blotter' | 'positions'
 
 function App() {
   const [trades, setTrades] = useState<Trade[]>([])
@@ -14,6 +15,7 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modal, setModal] = useState<ModalState>(null)
+  const [tab, setTab] = useState<Tab>('blotter')
 
   function fetchPositions() {
     tradesApi.positions().then(setPositions).catch(() => {
@@ -82,13 +84,33 @@ function App() {
         <p>Loading trades…</p>
       ) : (
         <>
-          <PositionSummary positions={positions} />
-          <TradeBlotter
-            trades={trades}
-            onCreate={() => setModal({ mode: 'create' })}
-            onAmend={(trade) => setModal({ mode: 'amend', trade })}
-            onCancel={handleCancel}
-          />
+          <div className="tabs">
+            <button
+              type="button"
+              className={tab === 'blotter' ? 'active' : undefined}
+              onClick={() => setTab('blotter')}
+            >
+              Trade Blotter
+            </button>
+            <button
+              type="button"
+              className={tab === 'positions' ? 'active' : undefined}
+              onClick={() => setTab('positions')}
+            >
+              Position Summary
+            </button>
+          </div>
+
+          {tab === 'blotter' ? (
+            <TradeBlotter
+              trades={trades}
+              onCreate={() => setModal({ mode: 'create' })}
+              onAmend={(trade) => setModal({ mode: 'amend', trade })}
+              onCancel={handleCancel}
+            />
+          ) : (
+            <PositionSummary positions={positions} />
+          )}
         </>
       )}
 

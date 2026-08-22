@@ -8,14 +8,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import type { SortingState } from '@tanstack/react-table'
-import type { Trade } from '../types/trade'
-
-interface TradeBlotterProps {
-  trades: Trade[]
-  onCreate: () => void
-  onAmend: (trade: Trade) => void
-  onCancel: (trade: Trade) => void
-}
+import type { Trade, TradeBlotterProps } from '../types/trade'
 
 const columnHelper = createColumnHelper<Trade>()
 

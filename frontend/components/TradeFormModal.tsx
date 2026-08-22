@@ -1,13 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import type { NewTrade, Trade } from '../types/trade'
-
-interface TradeFormModalProps {
-  mode: 'create' | 'amend'
-  initialTrade?: Trade | null
-  onClose: () => void
-  onSubmit: (data: NewTrade) => Promise<void>
-}
+import type { NewTrade, TradeFormModalProps } from '../types/trade'
 
 function toDatetimeLocal(iso: string): string {
   return new Date(iso).toISOString().slice(0, 16)

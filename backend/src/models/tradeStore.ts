@@ -38,6 +38,9 @@ function mapRow(row: TradeRow): Trade {
   }
 }
 
+// Repository for the `trades` table — the only place in the backend that talks SQL. Routes
+// call this for all reads/writes instead of querying the pool directly; business rules (like
+// blocking amend/cancel on an already-cancelled trade) live in the route handlers, not here.
 export const TradeStore = {
   async getAll(): Promise<Trade[]> {
     const [rows] = await getPool().query<TradeRow[]>('SELECT * FROM trades ORDER BY trade_timestamp DESC, tradeId')

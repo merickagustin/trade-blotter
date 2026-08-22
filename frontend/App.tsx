@@ -13,6 +13,7 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [modal, setModal] = useState<ModalState>(null)
 
+  // One-time load of whatever trades already exist, on first mount.
   useEffect(() => {
     tradesApi
       .list()
@@ -21,6 +22,10 @@ function App() {
       .finally(() => setLoading(false))
   }, [])
 
+  // Live updates: the backend broadcasts every create/amend/cancel to all connected clients
+  // (including whichever tab triggered it), so this is the only place `trades` gets mutated
+  // after the initial load — handleCreate/handleAmend/handleCancel below intentionally don't
+  // touch state themselves, to avoid applying the same change twice.
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const socket = new WebSocket(`${protocol}//${window.location.host}/ws`)
@@ -37,6 +42,7 @@ function App() {
     return () => socket.close()
   }, [])
 
+  // Fire the request and close the modal; the grid updates itself via the WebSocket message.
   async function handleCreate(data: NewTrade) {
     await tradesApi.create(data)
     setModal(null)
@@ -47,6 +53,7 @@ function App() {
     setModal(null)
   }
 
+  // Cancel is a direct row action (no modal), guarded by a confirm dialog since it's irreversible.
   async function handleCancel(trade: Trade) {
     if (!confirm(`Cancel trade ${trade.symbol} (${trade.tradeId})?`)) return
     try {

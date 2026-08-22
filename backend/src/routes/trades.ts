@@ -11,14 +11,18 @@ function validateNewTrade(body: Partial<NewTrade>): string | null {
   if (typeof body.quantity !== 'number' || body.quantity <= 0) return 'quantity must be a positive number'
   if (typeof body.price !== 'number' || body.price <= 0) return 'price must be a positive number'
   if (!body.trader || typeof body.trader !== 'string') return 'trader is required'
+  if (!body.book || typeof body.book !== 'string') return 'book is required'
+  if (!body.counterparty || typeof body.counterparty !== 'string') return 'counterparty is required'
   if (!body.tradeTimestamp || typeof body.tradeTimestamp !== 'string') return 'tradeTimestamp is required'
   return null
 }
 
+// List every trade for the blotter grid.
 tradesRouter.get('/', async (_req, res) => {
   res.json(await TradeStore.getAll())
 })
 
+// Create a new trade and broadcast it to connected clients.
 tradesRouter.post('/', async (req, res) => {
   const error = validateNewTrade(req.body)
   if (error) {
@@ -30,6 +34,7 @@ tradesRouter.post('/', async (req, res) => {
   res.status(201).json(trade)
 })
 
+// Amend an existing active trade's fields and broadcast the update.
 tradesRouter.patch('/:tradeId', async (req, res) => {
   const existing = await TradeStore.getById(req.params.tradeId)
   if (!existing) {
@@ -53,6 +58,7 @@ tradesRouter.patch('/:tradeId', async (req, res) => {
   res.json(trade)
 })
 
+// Cancel an active trade and broadcast the status change.
 tradesRouter.post('/:tradeId/cancel', async (req, res) => {
   const existing = await TradeStore.getById(req.params.tradeId)
   if (!existing) {

@@ -1,7 +1,7 @@
 import { TradeRepository } from '../repositories/tradeRepository.js'
 import { broadcast } from '../ws/server.js'
 import type { ITradeRepository } from '../repositories/tradeRepository.js'
-import type { NewTrade, PositionSummary, Trade, TradeAmendment } from '../models/trade.js'
+import type { NewTrade, PositionSummary, SymbolPnl, Trade, TradeAmendment } from '../models/trade.js'
 
 // Result shape for operations that can fail for a business reason (not found, invalid input,
 // already cancelled). Controllers check `'error' in result` and map `code` straight to the
@@ -17,8 +17,6 @@ export function validateNewTrade(body: Partial<NewTrade>): string | null {
   if (typeof body.quantity !== 'number' || body.quantity <= 0) return 'quantity must be a positive number'
   if (typeof body.price !== 'number' || body.price <= 0) return 'price must be a positive number'
   if (!body.trader || typeof body.trader !== 'string') return 'trader is required'
-  if (!body.book || typeof body.book !== 'string') return 'book is required'
-  if (!body.counterparty || typeof body.counterparty !== 'string') return 'counterparty is required'
   if (!body.tradeTimestamp || typeof body.tradeTimestamp !== 'string') return 'tradeTimestamp is required'
   return null
 }
@@ -84,6 +82,10 @@ export class TradeService {
 
   async getPositions(): Promise<PositionSummary[]> {
     return this.repository.getPositions()
+  }
+
+  async getPnlBySymbol(): Promise<SymbolPnl[]> {
+    return this.repository.getPnlBySymbol()
   }
 }
 

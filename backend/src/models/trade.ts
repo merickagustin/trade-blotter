@@ -63,3 +63,25 @@ export interface PositionRow extends RowDataPacket {
   symbol: string
   netQuantity: string
 }
+
+// P&L per symbol, across ACTIVE trades only:
+//   realizedPnl   = SUM(SELL value) - SUM(BUY value)              — cash actually locked in
+//   unrealizedPnl = netPosition * latestPrice                     — paper gain/loss on what's still open
+//   totalPnl      = realizedPnl + unrealizedPnl
+// "Latest price" is the most recent ACTIVE trade's price for that symbol — there's no live
+// market feed here, so it's the best available stand-in for a current price.
+export interface SymbolPnl {
+  symbol: string
+  realizedPnl: number
+  unrealizedPnl: number
+  totalPnl: number
+  latestPrice: number
+}
+
+export interface PnlRow extends RowDataPacket {
+  symbol: string
+  realizedPnl: string
+  unrealizedPnl: string
+  totalPnl: string
+  latestPrice: string
+}

@@ -51,3 +51,8 @@ export async function history(req: Request<{ tradeId: string }>, res: Response):
 export async function positions(_req: Request, res: Response): Promise<void> {
   res.json(await tradeService.getPositions())
 }
+
+// GET /api/trades/pnl — net cash-flow P&L per symbol (ACTIVE trades only).
+export async function pnl(_req: Request, res: Response): Promise<void> {
+  res.json(await tradeService.getPnlBySymbol())
+}

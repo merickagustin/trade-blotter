@@ -36,3 +36,18 @@ export interface PositionSummary {
 export interface PositionSummaryProps {
   positions: PositionSummary[]
 }
+
+// Realized/unrealized/total P&L per symbol, across ACTIVE trades only. Mirrors
+// backend/src/models/trade.ts. "Latest price" is the most recent ACTIVE trade's price for
+// that symbol — there's no live market feed, so it's the best available stand-in.
+export interface SymbolPnl {
+  symbol: string
+  realizedPnl: number
+  unrealizedPnl: number
+  totalPnl: number
+  latestPrice: number
+}
+
+export interface PnLViewProps {
+  pnl: SymbolPnl[]
+}

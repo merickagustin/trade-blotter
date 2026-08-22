@@ -2,8 +2,10 @@ import { getPool } from '@trade-blotter/database'
 import type { ResultSetHeader } from '@trade-blotter/database'
 import type {
   NewTrade,
+  PnlRow,
   PositionRow,
   PositionSummary,
+  SymbolPnl,
   Trade,
   TradeAmendment,
   TradeAmendmentRow,
@@ -41,6 +43,7 @@ export interface ITradeRepository {
   cancel(tradeId: string): Promise<Trade | undefined>
   getAmendments(tradeId: string): Promise<TradeAmendment[]>
   getPositions(): Promise<PositionSummary[]>
+  getPnlBySymbol(): Promise<SymbolPnl[]>
 }
 
 // Repository for the `trades` table — the only place in the backend that talks SQL. The
@@ -141,5 +144,62 @@ export class TradeRepository implements ITradeRepository {
        FROM trades WHERE status = 'ACTIVE' GROUP BY symbol ORDER BY symbol`,
     )
     return rows.map((row) => ({ symbol: row.symbol, netQuantity: Number(row.netQuantity) }))
+  }
+
+  // Realized/unrealized/total P&L per symbol, across ACTIVE trades only — see SymbolPnl for
+  // the formula. Two CTEs, joined by symbol:
+  //   aggregates — one row per symbol, cash-flow totals over every ACTIVE trade:
+  //     totalSellValue = SUM(quantity * price) for SELLs only
+  //     totalBuyValue  = SUM(quantity * price) for BUYs only
+  //     netPosition    = SUM(+quantity for BUY, -quantity for SELL)  (same calc as getPositions())
+  //   latest — one row per symbol, the price of whichever ACTIVE trade is most recent, picked
+  //     via ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY trade_timestamp DESC, tradeId DESC)
+  //     and keeping rn = 1 (tiebreak tradeId DESC — same convention as getAll()).
+  // Final SELECT combines them per symbol:
+  //   realizedPnl   = totalSellValue - totalBuyValue        (cash actually locked in)
+  //   unrealizedPnl = netPosition * latestPrice              (paper gain/loss on what's still open)
+  //   totalPnl      = realizedPnl + unrealizedPnl
+  async getPnlBySymbol(): Promise<SymbolPnl[]> {
+    const [rows] = await getPool().query<PnlRow[]>(
+      `WITH aggregates AS (
+         SELECT
+           symbol,
+           SUM(CASE WHEN side = 'SELL' THEN quantity * price ELSE 0 END) AS totalSellValue,
+           SUM(CASE WHEN side = 'BUY' THEN quantity * price ELSE 0 END) AS totalBuyValue,
+           SUM(CASE WHEN side = 'BUY' THEN quantity ELSE -quantity END) AS netPosition
+         FROM trades
+         WHERE status = 'ACTIVE'
+         GROUP BY symbol
+       ),
+       latest AS (
+         SELECT symbol, price AS latestPrice
+         FROM (
+           SELECT
+             symbol,
+             price,
+             ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY trade_timestamp DESC, tradeId DESC) AS rn
+           FROM trades
+           WHERE status = 'ACTIVE'
+         ) ranked
+         WHERE rn = 1
+       )
+       SELECT
+         aggregates.symbol,
+         (aggregates.totalSellValue - aggregates.totalBuyValue) AS realizedPnl,
+         (aggregates.netPosition * latest.latestPrice) AS unrealizedPnl,
+         (aggregates.totalSellValue - aggregates.totalBuyValue)
+           + (aggregates.netPosition * latest.latestPrice) AS totalPnl,
+         latest.latestPrice AS latestPrice
+       FROM aggregates
+       JOIN latest ON latest.symbol = aggregates.symbol
+       ORDER BY aggregates.symbol`,
+    )
+    return rows.map((row) => ({
+      symbol: row.symbol,
+      realizedPnl: Number(row.realizedPnl),
+      unrealizedPnl: Number(row.unrealizedPnl),
+      totalPnl: Number(row.totalPnl),
+      latestPrice: Number(row.latestPrice),
+    }))
   }
 }

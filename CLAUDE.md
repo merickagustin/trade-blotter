@@ -44,6 +44,20 @@ backend, not derived from whatever the frontend happens to have loaded, so it's 
 regardless of trade volume. Surfaced in the UI as `PositionSummary.tsx`, refetched on every
 WebSocket trade event since it can't be derived from the event payload alone.
 
+**P&L View:** `GET /api/trades/pnl` returns realized/unrealized/total P&L per symbol
+(`ACTIVE` trades only) — same SQL-aggregation approach as Position Summary, via a CTE +
+`ROW_NUMBER()` window function:
+- `realizedPnl` = SUM(SELL value) − SUM(BUY value) — cash actually locked in.
+- `unrealizedPnl` = net position × latest price — paper gain/loss on what's still open.
+- `totalPnl` = realizedPnl + unrealizedPnl.
+- `latestPrice` = the most recent `ACTIVE` trade's price for that symbol (ordered by
+  `trade_timestamp DESC`, tiebreak `tradeId DESC`) — there's no live market feed in this
+  system, so it's the best available stand-in for a current price.
+
+`PnLView.tsx` renders one row per symbol with all four values; negative-value styling
+(`.pnl-negative`) applies per-cell, not per-row, since realized and unrealized can carry
+different signs for the same symbol. Same tab/refetch pattern as Position Summary.
+
 ## Tests
 
 Tests live in `backend/test/`, mirroring `src/`'s structure — **not** co-located with source

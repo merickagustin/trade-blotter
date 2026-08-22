@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { TradeService, validateNewTrade } from '../../src/services/tradeService.js'
 import type { ITradeRepository } from '../../src/repositories/tradeRepository.js'
-import type { NewTrade, PositionSummary, Trade, TradeAmendment } from '../../src/models/trade.js'
+import type { NewTrade, PositionSummary, SymbolPnl, Trade, TradeAmendment } from '../../src/models/trade.js'
 
 const validTrade = {
   symbol: 'AAPL',
@@ -37,10 +37,13 @@ describe('validateNewTrade', () => {
     expect(validateNewTrade({ ...validTrade, price: 0 })).toBe('price must be a positive number')
   })
 
-  it('rejects a missing trader, book, or counterparty', () => {
+  it('rejects a missing trader', () => {
     expect(validateNewTrade({ ...validTrade, trader: '' })).toBe('trader is required')
-    expect(validateNewTrade({ ...validTrade, book: '' })).toBe('book is required')
-    expect(validateNewTrade({ ...validTrade, counterparty: '' })).toBe('counterparty is required')
+  })
+
+  it('accepts a missing book or counterparty — not required', () => {
+    expect(validateNewTrade({ ...validTrade, book: '' })).toBeNull()
+    expect(validateNewTrade({ ...validTrade, counterparty: '' })).toBeNull()
   })
 
   it('rejects a missing tradeTimestamp', () => {
@@ -106,8 +109,45 @@ class FakeTradeRepository implements ITradeRepository {
       .map(([symbol, netQuantity]) => ({ symbol, netQuantity }))
       .sort((a, b) => a.symbol.localeCompare(b.symbol))
   }
+
+  async getPnlBySymbol(): Promise<SymbolPnl[]> {
+    const bySymbol = new Map<string, { totalSellValue: number; totalBuyValue: number; netPosition: number }>()
+    const latestBySymbol = new Map<string, Trade>()
+
+    for (const trade of this.trades.values()) {
+      if (trade.status !== 'ACTIVE') continue
+
+      const totals = bySymbol.get(trade.symbol) ?? { totalSellValue: 0, totalBuyValue: 0, netPosition: 0 }
+      const value = trade.quantity * trade.price
+      if (trade.side === 'SELL') {
+        totals.totalSellValue += value
+        totals.netPosition -= trade.quantity
+      } else {
+        totals.totalBuyValue += value
+        totals.netPosition += trade.quantity
+      }
+      bySymbol.set(trade.symbol, totals)
+
+      // Map iteration is insertion order, so a later trade with an equal tradeTimestamp is
+      // treated as "more recent" — mirrors the tradeId DESC tiebreak the real query uses.
+      const current = latestBySymbol.get(trade.symbol)
+      if (!current || trade.tradeTimestamp >= current.tradeTimestamp) {
+        latestBySymbol.set(trade.symbol, trade)
+      }
+    }
+
+    return [...bySymbol.entries()]
+      .map(([symbol, totals]) => {
+        const latestPrice = latestBySymbol.get(symbol)!.price
+        const realizedPnl = totals.totalSellValue - totals.totalBuyValue
+        const unrealizedPnl = totals.netPosition * latestPrice
+        return { symbol, realizedPnl, unrealizedPnl, totalPnl: realizedPnl + unrealizedPnl, latestPrice }
+      })
+      .sort((a, b) => a.symbol.localeCompare(b.symbol))
+  }
 }
 
+// Error cases from the controller
 describe('TradeService (with a fake repository)', () => {
   it('refuses to amend a cancelled trade', async () => {
     const service = new TradeService(new FakeTradeRepository())
@@ -152,6 +192,8 @@ describe('TradeService (with a fake repository)', () => {
   it('nets BUY/SELL quantity per symbol and excludes cancelled trades', async () => {
     const service = new TradeService(new FakeTradeRepository())
 
+    // Create a BUY and a SELL for the same symbol, plus a cancelled trade for a different symbol. 
+    // The net position should be 100 - 40 = 60 for AAPL, and MSFT should not appear because it was cancelled.
     const buy = await service.createTrade({ ...validTrade, symbol: 'AAPL', side: 'BUY', quantity: 100 })
     if ('error' in buy) throw new Error('setup failed: create should not fail')
     await service.createTrade({ ...validTrade, symbol: 'AAPL', side: 'SELL', quantity: 40 })
@@ -163,5 +205,27 @@ describe('TradeService (with a fake repository)', () => {
     const positions = await service.getPositions()
 
     expect(positions).toEqual([{ symbol: 'AAPL', netQuantity: 60 }])
+  })
+
+  it('computes realized/unrealized/total P&L per symbol and excludes cancelled trades', async () => {
+    const service = new TradeService(new FakeTradeRepository())
+
+    // BUY 100 @ 150.5 = 15050 buy value, SELL 40 @ 160 = 6400 sell value.
+    // realizedPnl = 6400 - 15050 = -8650. netPosition = 100 - 40 = 60.
+    // Both trades share the same tradeTimestamp, so the tiebreak (created-later-wins) picks
+    // the SELL (price 160) as "latest" → unrealizedPnl = 60 * 160 = 9600, totalPnl = 950.
+    const buy = await service.createTrade({ ...validTrade, symbol: 'AAPL', side: 'BUY', quantity: 100, price: 150.5 })
+    if ('error' in buy) throw new Error('setup failed: create should not fail')
+    await service.createTrade({ ...validTrade, symbol: 'AAPL', side: 'SELL', quantity: 40, price: 160 })
+
+    const cancelled = await service.createTrade({ ...validTrade, symbol: 'MSFT', side: 'SELL', quantity: 500, price: 300 })
+    if ('error' in cancelled) throw new Error('setup failed: create should not fail')
+    await service.cancelTrade(cancelled.tradeId)
+
+    const pnl = await service.getPnlBySymbol()
+
+    expect(pnl).toEqual([
+      { symbol: 'AAPL', realizedPnl: -8650, unrealizedPnl: 9600, totalPnl: 950, latestPrice: 160 },
+    ])
   })
 })

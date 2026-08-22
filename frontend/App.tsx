@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react'
 import { tradesApi } from './api/trades'
+import PnLView from './components/PnLView'
 import PositionSummary from './components/PositionSummary'
 import TradeBlotter from './components/TradeBlotter'
 import TradeFormModal from './components/TradeFormModal'
-import type { NewTrade, PositionSummary as PositionSummaryData, Trade } from './types/trade'
+import type { NewTrade, PositionSummary as PositionSummaryData, SymbolPnl, Trade } from './types/trade'
 import './App.css'
 
 type ModalState = { mode: 'create' } | { mode: 'amend'; trade: Trade } | null
-type Tab = 'blotter' | 'positions'
+type Tab = 'blotter' | 'positions' | 'pnl'
 
 function App() {
   const [trades, setTrades] = useState<Trade[]>([])
   const [positions, setPositions] = useState<PositionSummaryData[]>([])
+  const [pnl, setPnl] = useState<SymbolPnl[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [modal, setModal] = useState<ModalState>(null)
@@ -23,6 +25,12 @@ function App() {
     })
   }
 
+  function fetchPnl() {
+    tradesApi.pnl().then(setPnl).catch(() => {
+      // Non-critical — leave P&L stale rather than surfacing a page-level error over this.
+    })
+  }
+
   // One-time load of whatever trades already exist, on first mount.
   useEffect(() => {
     tradesApi
@@ -31,13 +39,14 @@ function App() {
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load trades'))
       .finally(() => setLoading(false))
     fetchPositions()
+    fetchPnl()
   }, [])
 
   // Live updates: the backend broadcasts every create/amend/cancel to all connected clients
   // (including whichever tab triggered it), so this is the only place `trades` gets mutated
   // after the initial load — handleCreate/handleAmend/handleCancel below intentionally don't
-  // touch state themselves, to avoid applying the same change twice. Positions are computed
-  // server-side, so they're refetched (not derived) on every trade event too.
+  // touch state themselves, to avoid applying the same change twice. Positions and P&L are
+  // computed server-side, so they're refetched (not derived) on every trade event too.
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const socket = new WebSocket(`${protocol}//${window.location.host}/ws`)
@@ -50,6 +59,7 @@ function App() {
           : [...prev, trade],
       )
       fetchPositions()
+      fetchPnl()
     }
 
     return () => socket.close()
@@ -99,18 +109,25 @@ function App() {
             >
               Position Summary
             </button>
+            <button
+              type="button"
+              className={tab === 'pnl' ? 'active' : undefined}
+              onClick={() => setTab('pnl')}
+            >
+              P&amp;L View
+            </button>
           </div>
 
-          {tab === 'blotter' ? (
+          {tab === 'blotter' && (
             <TradeBlotter
               trades={trades}
               onCreate={() => setModal({ mode: 'create' })}
               onAmend={(trade) => setModal({ mode: 'amend', trade })}
               onCancel={handleCancel}
             />
-          ) : (
-            <PositionSummary positions={positions} />
           )}
+          {tab === 'positions' && <PositionSummary positions={positions} />}
+          {tab === 'pnl' && <PnLView pnl={pnl} />}
         </>
       )}
 

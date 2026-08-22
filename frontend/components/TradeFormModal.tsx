@@ -103,7 +103,6 @@ function TradeFormModal({ mode, initialTrade, onClose, onSubmit }: TradeFormModa
           <label>
             Book
             <input
-              required
               value={form.book}
               onChange={(e) => setForm({ ...form, book: e.target.value })}
             />
@@ -111,7 +110,6 @@ function TradeFormModal({ mode, initialTrade, onClose, onSubmit }: TradeFormModa
           <label>
             Counterparty
             <input
-              required
               value={form.counterparty}
               onChange={(e) => setForm({ ...form, counterparty: e.target.value })}
             />

@@ -35,6 +35,27 @@
   }
 }
 
+.trade-blotter-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.trade-blotter-toolbar input,
+.trade-blotter-toolbar select {
+  font: inherit;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.trade-blotter-toolbar input {
+  flex: 1 1 240px;
+  max-width: 320px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -52,6 +73,15 @@ td {
 th {
   color: var(--text-h);
   font-weight: 500;
+  user-select: none;
+}
+
+th.sortable {
+  cursor: pointer;
+
+  &:hover {
+    color: var(--accent);
+  }
 }
 
 tr.cancelled {

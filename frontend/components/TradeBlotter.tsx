@@ -1,3 +1,13 @@
+import { useMemo, useState } from 'react'
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
+import type { SortingState } from '@tanstack/react-table'
 import type { Trade } from '../types/trade'
 
 interface TradeBlotterProps {
@@ -7,7 +17,66 @@ interface TradeBlotterProps {
   onCancel: (trade: Trade) => void
 }
 
+const columnHelper = createColumnHelper<Trade>()
+
 function TradeBlotter({ trades, onCreate, onAmend, onCancel }: TradeBlotterProps) {
+  const [globalFilter, setGlobalFilter] = useState('')
+  const [sorting, setSorting] = useState<SortingState>([])
+
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor('tradeId', { header: 'Trade ID' }),
+      columnHelper.accessor('symbol', { header: 'Symbol' }),
+      columnHelper.accessor('side', { header: 'Side' }),
+      columnHelper.accessor('quantity', { header: 'Quantity' }),
+      columnHelper.accessor('price', { header: 'Price', cell: (info) => info.getValue().toFixed(2) }),
+      columnHelper.accessor('trader', { header: 'Trader' }),
+      columnHelper.accessor('book', { header: 'Book' }),
+      columnHelper.accessor('counterparty', { header: 'Counterparty' }),
+      columnHelper.accessor('tradeTimestamp', {
+        header: 'Trade Timestamp',
+        cell: (info) => info.getValue().replace('T', ' ').replace('Z', ''),
+      }),
+      columnHelper.accessor('status', { header: 'Status' }),
+      columnHelper.display({
+        id: 'actions',
+        header: 'Actions',
+        cell: (info) => {
+          const trade = info.row.original
+          const isActive = trade.status === 'ACTIVE'
+          return (
+            <div className="actions">
+              <button type="button" onClick={() => onAmend(trade)} disabled={!isActive}>
+                Amend
+              </button>
+              <button type="button" onClick={() => onCancel(trade)} disabled={!isActive}>
+                Cancel
+              </button>
+            </div>
+          )
+        },
+      }),
+    ],
+    [onAmend, onCancel],
+  )
+
+  const table = useReactTable({
+    data: trades,
+    columns,
+    state: {
+      globalFilter,
+      sorting,
+    },
+    onGlobalFilterChange: setGlobalFilter,
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  })
+
+  const statusColumn = table.getColumn('status')
+  const statusFilter = (statusColumn?.getFilterValue() as string) ?? ''
+
   return (
     <section className="trade-blotter">
       <div className="trade-blotter-header">
@@ -17,55 +86,59 @@ function TradeBlotter({ trades, onCreate, onAmend, onCancel }: TradeBlotterProps
         </button>
       </div>
 
+      <div className="trade-blotter-toolbar">
+        <input
+          type="text"
+          placeholder="Search trades…"
+          value={globalFilter}
+          onChange={(e) => setGlobalFilter(e.target.value)}
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => statusColumn?.setFilterValue(e.target.value || undefined)}
+        >
+          <option value="">All statuses</option>
+          <option value="ACTIVE">Active</option>
+          <option value="CANCELLED">Cancelled</option>
+        </select>
+      </div>
+
       <table>
         <thead>
-          <tr>
-            <th>Trade ID</th>
-            <th>Symbol</th>
-            <th>Side</th>
-            <th>Quantity</th>
-            <th>Price</th>
-            <th>Trader</th>
-            <th>Book</th>
-            <th>Counterparty</th>
-            <th>Trade Timestamp</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => {
+                const sorted = header.column.getIsSorted()
+                return (
+                  <th
+                    key={header.id}
+                    onClick={header.column.getToggleSortingHandler()}
+                    className={header.column.getCanSort() ? 'sortable' : undefined}
+                  >
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {sorted === 'asc' && ' ▲'}
+                    {sorted === 'desc' && ' ▼'}
+                  </th>
+                )
+              })}
+            </tr>
+          ))}
         </thead>
         <tbody>
-          {trades.length === 0 && (
+          {table.getRowModel().rows.length === 0 && (
             <tr>
-              <td colSpan={11} className="empty-row">
-                No trades yet.
+              <td colSpan={columns.length} className="empty-row">
+                No trades found.
               </td>
             </tr>
           )}
-          {trades.map((trade) => {
-            const isActive = trade.status === 'ACTIVE'
-            return (
-              <tr key={trade.tradeId} className={!isActive ? 'cancelled' : undefined}>
-                <td>{trade.tradeId}</td>
-                <td>{trade.symbol}</td>
-                <td>{trade.side}</td>
-                <td>{trade.quantity}</td>
-                <td>{trade.price.toFixed(2)}</td>
-                <td>{trade.trader}</td>
-                <td>{trade.book}</td>
-                <td>{trade.counterparty}</td>
-                <td>{trade.tradeTimestamp.replace('T', ' ').replace('Z', '')}</td>
-                <td>{trade.status}</td>
-                <td className="actions">
-                  <button type="button" onClick={() => onAmend(trade)} disabled={!isActive}>
-                    Amend
-                  </button>
-                  <button type="button" onClick={() => onCancel(trade)} disabled={!isActive}>
-                    Cancel
-                  </button>
-                </td>
-              </tr>
-            )
-          })}
+          {table.getRowModel().rows.map((row) => (
+            <tr key={row.id} className={row.original.status !== 'ACTIVE' ? 'cancelled' : undefined}>
+              {row.getVisibleCells().map((cell) => (
+                <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+              ))}
+            </tr>
+          ))}
         </tbody>
       </table>
     </section>

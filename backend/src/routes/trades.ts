@@ -11,8 +11,6 @@ function validateNewTrade(body: Partial<NewTrade>): string | null {
   if (typeof body.quantity !== 'number' || body.quantity <= 0) return 'quantity must be a positive number'
   if (typeof body.price !== 'number' || body.price <= 0) return 'price must be a positive number'
   if (!body.trader || typeof body.trader !== 'string') return 'trader is required'
-  if (!body.book || typeof body.book !== 'string') return 'book is required'
-  if (!body.counterparty || typeof body.counterparty !== 'string') return 'counterparty is required'
   if (!body.tradeTimestamp || typeof body.tradeTimestamp !== 'string') return 'tradeTimestamp is required'
   return null
 }

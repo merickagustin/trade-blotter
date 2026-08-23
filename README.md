@@ -133,7 +133,7 @@ npm run lint
 - This is a simple trading app for a single tenant. There is no multi organization data to isolate.
 - Trade data will come from the backend API. No 3rd party API for this app. No live market feed.
 - **Functional Requirements** - No specific UI design on how it will look like. UX will be simple and practical for the user based on the specific requirements.
-- **Live Updates** - Only broadcast live updates from create/amend/cancel. There's no reconnect or auth mechanism, so a dropped connection silently stops delivering live broadcasts. The Refresh button or a page reload mitigates this.
+- **Live Updates** - Only broadcast live updates from create/amend/cancel.
 - **Login user authentication** - bcrypt handles password hashing and verification for login since it doesn't require Token based, MFA or SSO type of authentication.
 - **Layered structure** for the project will be frontend, backend and database.
 - **Containerisation**, though a bonus idea, will be setup alongside with setting up the backend to easily to configure for docker.
@@ -158,4 +158,4 @@ Price unit assuming in single currency. Trader - no requirements specific to ver
 - **Backend Layered** - boilerplate-heavy (Layers: models, repositories, services, controllers, routes), in exchange for logic being unit-testable without a DB and each file staying easy to follow since it only does one job.
 - **Audit trail** - full before/after JSON snapshots per amendment instead of a field-level diff. It will be hard to trace when having more records.
 - **No Pagination/More Filters** - Trade Blotter, Position Summary and P&L symbol which displays all of the records. This is not ideal way to manage a large volume of records in actual trade event.
-- **WebSocket broadcast** - it is unfiltered and unathenticated broadcast to all clients.
+- **WebSocket broadcast** - it is unfiltered and unathenticated broadcast to all clients. There's no reconnect or auth mechanism, so a dropped connection silently stops delivering live broadcasts. The Refresh button or a page reload mitigates this.

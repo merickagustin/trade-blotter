@@ -1,0 +1,46 @@
+name: Push Multi-Container to ECR
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  push-to-ecr:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - folder: frontend
+            repo: my-trade-blotter-frontend
+          - folder: backend
+            repo: my-trade-blotter-backend
+          - folder: database
+            repo: my-trade-blotter-db
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, Tag, and Push Image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: ${{ matrix.service.repo }}
+          CONTEXT_PATH: ./${{ matrix.service.folder }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG $CONTEXT_PATH
+          docker tag $REGISTRY/$REPOSITORY:$IMAGE_TAG $REGISTRY/$REPOSITORY:latest
+          
+          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+          docker push $REGISTRY/$REPOSITORY:latest
